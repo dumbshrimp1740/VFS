@@ -1,20 +1,25 @@
-// VFS.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
-
 #include <iostream>
+#include <string>
+#include "TestTask.cpp"
+
+using namespace std;
+using namespace TestTask;
 
 int main()
 {
-    std::cout << "Hello World!\n";
+    string path = "root\\tworoot";
+    File root = File("root");
+    IVFS ivfs = IVFS();
+
+    File* resfile = ivfs.Create("root\\tworoot");
+    string s = "ITS ME AUSTIN";
+    string res = "";
+    ivfs.Write(resfile, &s[0], 100);
+    ivfs.Close(resfile);
+    File* secondFile = ivfs.Open("root\\tworoot");
+    for (auto it = ivfs.root.children.find("root")->second.children.begin(); it != ivfs.root.children.find("root")->second.children.end(); it++) {
+        cout << it->second.fileContent;
+    }
 }
 
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
 
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
