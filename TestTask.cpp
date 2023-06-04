@@ -77,17 +77,19 @@ namespace TestTask
 					it = currentFile->children.find(nextPart); // Пытаемся найти этот файл
 					if (it == currentFile->children.end()) { 
 						// Если файла нет в этой директории возвращаем nullptr
+						cout << "there's no such file\n";
 						return nullptr;
 					}
 					else if (it->second.accessType == WRITEONLY) {
 						// Если файл в режиме writeonly, возвращаем nullptr
+						cout << "File is WRITEONLY\n";
 						return nullptr;
 					}
 					else {
 						// Если файл существует и он находится в режиме readonly или закрыт 
-						File resFile = it->second;
-						resFile.accessType = READONLY; // То переводим файл в readonly
-						return &resFile; // И возвращаем указатель на него
+						File* resFile = &it->second;
+						resFile->accessType = READONLY; // То переводим файл в readonly
+						return resFile; // И возвращаем указатель на него
 					}
 				}
 			}
@@ -151,13 +153,35 @@ namespace TestTask
 
 		size_t Read(File* f, char* buff, size_t len) {
 			// Прочитать данные из файла. Возвращаемое значение - сколько реально байт удалось прочитать
+			
+			/*
+				Выкидывает исключение при len, который в несколько раз превосходит длину буфера.
+				Частный случай этой проблемы — если в len передать отрицательный int (из-за разницы хранения signed и unsigned чисел)
+			*/ 
+
 			if (f->accessType == READONLY) { //Если файл открыт для чтения
-				// Читаем len символов
-				string readBytes = f->fileContent.substr(0, min(len, f->fileContent.length())); 
-				buff = &readBytes[0];
-				return sizeof(buff); // Возвращаем, сколько байт удалось прочитать
+				// Читаем len символов и записываем их в buff, пока можем
+				File tmpFile = *f;
+				char* fileToRead = &tmpFile.fileContent[0];
+				char* start = buff;
+				for (size_t i = 0; i < len; i++) {
+					char charToRead = *fileToRead;
+					*buff = charToRead;
+					buff++;
+					fileToRead++;
+				}
+				if (len < string(buff).length()) { // Если длина буфера больше len, то лишние символы в конце буфера стираем
+					for (int i = len; i < string(buff).length(); i++) {
+						*buff = '\0';
+						buff++;
+					}
+				}
+				buff = start;
+				cout << string(buff) << endl;
+				return size(string(buff)); // Возвращаем, сколько байт удалось прочитать
 			}
 			else { // Если файл закрыт или writeonly
+				cout << "File is writeonly or closed\n";
 				return 0; // Возвращаем 0 (ничего не удалось прочитать)
 			}
 		} 
@@ -166,9 +190,9 @@ namespace TestTask
 			// Записать данные в файл. Возвращаемое значение - сколько реально байт удалось записать
 			if (f->accessType == WRITEONLY) { //Если файл открыт для записи
 				// записываем len символов из буфера
-				string bytesToWrite = string(buff).substr(0, min(len, string(buff).length()));
-				f->fileContent.append(bytesToWrite);
-				return sizeof(bytesToWrite); // Возвращаем, сколько байт удалось записать из буфера
+				string bytesToWrite = string(buff).substr(0, len);
+				f->fileContent = bytesToWrite;
+				return size(f->fileContent); // Возвращаем, сколько байт удалось записать из буфера
 			}
 			else { // Если файл закрыт или readonly
 				return 0; // Возвращаем 0 (ничего не удалось записать)
