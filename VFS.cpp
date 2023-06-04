@@ -18,10 +18,10 @@ int main()
     string str1 = "it's me austin!";
     char* buf1 = &str1[0];
 
-    string str2 = "dead man walking";
+    string str2 = "deadman walking";
     char* buf2 = &str2[0];
 
-    string str4 = "abobaabobovna";
+    string str4 = "crabobaabobovna";
     char* buf4 = &str4[0];
 
 

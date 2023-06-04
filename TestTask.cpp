@@ -1,8 +1,6 @@
 #include <string>
 #include <map>
 #include <mutex>
-#include <chrono>
-#include <thread>
 #include <iostream>
 
 using namespace std;
@@ -64,7 +62,7 @@ namespace TestTask
 
 		File* Open(const char* name) { 
 			// Открыть файл в readonly режиме. Если нет такого файла или же он открыт во writeonly режиме - вернуть nullptr
-			string path = string(name); // я исходил из того, что путь имеет формат "директория 1\директория 2\..\директория N\файл"
+			string path = string(name); // Путь имеет формат "директория 1\директория 2\..\директория N\файл"
 			File* currentFile = &root; // Директория, в которой находится алгоритм в данный момент
 
 			string nextPart;
@@ -93,12 +91,10 @@ namespace TestTask
 					it = currentFile->children.find(nextPart); // Пытаемся найти этот файл
 					if (it == currentFile->children.end()) { 
 						// Если файла нет в этой директории возвращаем nullptr
-						cout << "there's no such file\n";
 						return nullptr;
 					}
 					else if (it->second.accessType == WRITEONLY) {
 						// Если файл в режиме writeonly, возвращаем nullptr
-						cout << "File is WRITEONLY\n";
 						return nullptr;
 					}
 					else {
@@ -115,7 +111,7 @@ namespace TestTask
 
 		File* Create(const char* name){ 
 			// Открыть или создать файл в writeonly режиме. Если нужно, то создать все нужные поддиректории, упомянутые в пути. Вернуть nullptr, если этот файл уже открыт в readonly режиме.
-			string path = string(name); // я исходил из того, что путь имеет формат "директория 1\директория 2\..\директория N\файл"
+			string path = string(name); // Путь имеет формат "директория 1\директория 2\..\директория N\файл"
 			File* currentFile = &root; // Директория, в которой находится алгоритм в данный момент
 
 			string nextPart;
@@ -131,7 +127,7 @@ namespace TestTask
 
 					it = currentFile->children.find(nextPart); // Пытаемся найти эту директорию
 					if (it == currentFile->children.end()) {
-						// Если её не существует, то создаём её и заходим в неё.
+						// Если её не существует, то создаём и заходим в неё.
 						currentFile->children.insert(pair<string, File>(nextPart, File(nextPart)));
 						currentFile = &currentFile->children.find(nextPart)->second;
 					}
@@ -171,9 +167,7 @@ namespace TestTask
 
 		size_t Read(File* f, char* buff, size_t len) {
 			// Прочитать данные из файла. Возвращаемое значение - сколько реально байт удалось прочитать
-			cout << "Read file " << f->fileName << endl;
 			f->mut->lock();
-			cout << "start Read file " << f->fileName << endl;
 			if (f->accessType == READONLY) { //Если файл открыт для чтения
 				
 				// Если len больше длины буфера или если в него передали отрицательное число, то уменьшаем значение len до длины буфера.
@@ -196,48 +190,36 @@ namespace TestTask
 					}
 				}
 				buff = start;
-				cout << string(buff) << endl;
 				f->mut->unlock();
-				cout << "finish Read file " << f->fileName << endl;
 				return size(string(buff)); // Возвращаем, сколько байт удалось прочитать
 			}
 			else { // Если файл закрыт или writeonly
-				cout << "File is writeonly or closed\n";
 				f->mut->unlock();
-				cout << "finish Read file " << f->fileName << endl;
 				return 0; // Возвращаем 0 (ничего не удалось прочитать)
 			}
 		} 
 
 		size_t Write(File* f, char* buff, size_t len) {
 			// Записать данные в файл. Возвращаемое значение - сколько реально байт удалось записать
-			cout << "Write file " << f->fileName << endl;
 			f->mut->lock();
-			this_thread::sleep_for(chrono::seconds(4));
-			cout << "Start write file " << f->fileName << endl;
 			if (f->accessType == WRITEONLY) { //Если файл открыт для записи
 				// записываем len символов из буфера
 				string bytesToWrite = string(buff).substr(0, len);
 				f->fileContent = bytesToWrite;
 				f->mut->unlock();
-				cout << "Finish write file " << string(buff) << f->fileName << endl;
 				return size(f->fileContent); // Возвращаем, сколько байт удалось записать из буфера
 			}
 			else { // Если файл закрыт или readonly
 				f->mut->unlock();
-				cout << "Finish write file " << f->fileName << endl;
 				return 0; // Возвращаем 0 (ничего не удалось записать)
 			}
 		}
 
 		void Close(File* f) {
 			// Закрыть файл	
-			cout << "Close file " << f->fileName << endl;
 			f->mut->lock();
-			cout << "start Close file " << f->fileName << endl;
 			f->accessType = CLOSED;
 			f->mut->unlock();
-			cout << "Finish Close file " << f->fileName << endl;
 		}
 	};
 
