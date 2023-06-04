@@ -6,7 +6,7 @@ using namespace std;
 
 namespace TestTask
 {
-	enum AccessType {
+	enum AccessType { // Состояние файла
 		READONLY, // Файл открыт в режиме чтения
 		WRITEONLY, // Файл открыт в режиме записи
 		CLOSED // Файл в данный момент свободен и его можно открыть
@@ -34,9 +34,18 @@ namespace TestTask
 
 	struct IVFS
 	{
+		virtual File* Open(const char* name) = 0; // Открыть файл в readonly режиме. Если нет такого файла или же он открыт во writeonly режиме - вернуть nullptr
+		virtual File* Create(const char* name) = 0; // Открыть или создать файл в writeonly режиме. Если нужно, то создать все нужные поддиректории, упомянутые в пути. Вернуть nullptr, если этот файл уже открыт в readonly режиме.
+		virtual size_t Read(File* f, char* buff, size_t len) = 0; // Прочитать данные из файла. Возвращаемое значение - сколько реально байт удалось прочитать
+		virtual size_t Write(File* f, char* buff, size_t len) = 0; // Записать данные в файл. Возвращаемое значение - сколько реально байт удалось записать
+		virtual void Close(File* f) = 0; // Закрыть файл	
+	};
+
+	struct MyVFS : IVFS
+	{
 		File root = File("root");
 
-		static string GetNextPartOfPath(string path) {
+		string GetNextPartOfPath(string path) { // Вспомогательная функция для парсинга строк
 			for (int i = 0; i < path.length(); i++) {
 				if (path[i] == '\\')
 				{
@@ -56,7 +65,7 @@ namespace TestTask
 
 			while (true) {
 				// Вычленяем из пути названия директорий и файла
-				nextPart = IVFS::GetNextPartOfPath(path);
+				nextPart = GetNextPartOfPath(path);
 
 				if (path.length() != nextPart.length()) { 
 					// Если это имя директории
@@ -105,7 +114,7 @@ namespace TestTask
 
 			while (true) {
 				// Вычленяем из пути названия директорий и файла
-				nextPart = IVFS::GetNextPartOfPath(path);
+				nextPart = GetNextPartOfPath(path);
 
 				if (path.length() != nextPart.length()) {
 					// Если это имя директории
@@ -153,13 +162,11 @@ namespace TestTask
 
 		size_t Read(File* f, char* buff, size_t len) {
 			// Прочитать данные из файла. Возвращаемое значение - сколько реально байт удалось прочитать
-			
-			/*
-				Выкидывает исключение при len, который в несколько раз превосходит длину буфера.
-				Частный случай этой проблемы — если в len передать отрицательный int (из-за разницы хранения signed и unsigned чисел)
-			*/ 
-
 			if (f->accessType == READONLY) { //Если файл открыт для чтения
+				
+				// Если len больше длины буфера или если в него передали отрицательное число, то уменьшаем значение len до длины буфера.
+				len = min(len, string(buff).length()); 
+
 				// Читаем len символов и записываем их в buff, пока можем
 				File tmpFile = *f;
 				char* fileToRead = &tmpFile.fileContent[0];
