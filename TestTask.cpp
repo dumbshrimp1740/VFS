@@ -1,5 +1,8 @@
 #include <string>
 #include <map>
+#include <mutex>
+#include <chrono>
+#include <thread>
 #include <iostream>
 
 using namespace std;
@@ -18,17 +21,21 @@ namespace TestTask
 		string fileContent; // Содержимое файла
 
 		AccessType accessType; // Открыт или закрыт файл в данный момент.
+		mutex *mut; // Указатель на mutex, для защиты файла во время многопоточности. По сути, один файл может использоваться только одним потоком
 
 		File(string name) {
 			fileName = name;
 			fileContent = "";
 			accessType = CLOSED;
+			mut = new mutex();
 		}
 
 		File(string name, string content) {
 			fileName = name;
 			fileContent = content;
 			accessType = CLOSED;
+
+			mut = new mutex();
 		}
 	}; 
 
@@ -97,7 +104,9 @@ namespace TestTask
 					else {
 						// Если файл существует и он находится в режиме readonly или закрыт 
 						File* resFile = &it->second;
+						resFile->mut->lock();
 						resFile->accessType = READONLY; // То переводим файл в readonly
+						resFile->mut->unlock();
 						return resFile; // И возвращаем указатель на него
 					}
 				}
@@ -141,11 +150,11 @@ namespace TestTask
 						}
 						else {
 							// Если файл существует в этой директории и он не readonly, переводим его в writeonly
-							File resFile = it->second;
-							resFile.accessType = WRITEONLY;
-
+							it->second.mut->lock();
+							it->second.accessType = WRITEONLY;
+							it->second.mut->unlock();
 							// Возвращаем указатель на файл
-							return &resFile;
+							return &it->second;
 						}
 						
 					}
@@ -162,6 +171,9 @@ namespace TestTask
 
 		size_t Read(File* f, char* buff, size_t len) {
 			// Прочитать данные из файла. Возвращаемое значение - сколько реально байт удалось прочитать
+			cout << "Read file " << f->fileName << endl;
+			f->mut->lock();
+			cout << "start Read file " << f->fileName << endl;
 			if (f->accessType == READONLY) { //Если файл открыт для чтения
 				
 				// Если len больше длины буфера или если в него передали отрицательное число, то уменьшаем значение len до длины буфера.
@@ -178,37 +190,54 @@ namespace TestTask
 					fileToRead++;
 				}
 				if (len < string(buff).length()) { // Если длина буфера больше len, то лишние символы в конце буфера стираем
-					for (int i = len; i < string(buff).length(); i++) {
+					for (size_t i = len; i < string(buff).length(); i++) {
 						*buff = '\0';
 						buff++;
 					}
 				}
 				buff = start;
 				cout << string(buff) << endl;
+				f->mut->unlock();
+				cout << "finish Read file " << f->fileName << endl;
 				return size(string(buff)); // Возвращаем, сколько байт удалось прочитать
 			}
 			else { // Если файл закрыт или writeonly
 				cout << "File is writeonly or closed\n";
+				f->mut->unlock();
+				cout << "finish Read file " << f->fileName << endl;
 				return 0; // Возвращаем 0 (ничего не удалось прочитать)
 			}
 		} 
 
 		size_t Write(File* f, char* buff, size_t len) {
 			// Записать данные в файл. Возвращаемое значение - сколько реально байт удалось записать
+			cout << "Write file " << f->fileName << endl;
+			f->mut->lock();
+			this_thread::sleep_for(chrono::seconds(4));
+			cout << "Start write file " << f->fileName << endl;
 			if (f->accessType == WRITEONLY) { //Если файл открыт для записи
 				// записываем len символов из буфера
 				string bytesToWrite = string(buff).substr(0, len);
 				f->fileContent = bytesToWrite;
+				f->mut->unlock();
+				cout << "Finish write file " << string(buff) << f->fileName << endl;
 				return size(f->fileContent); // Возвращаем, сколько байт удалось записать из буфера
 			}
 			else { // Если файл закрыт или readonly
+				f->mut->unlock();
+				cout << "Finish write file " << f->fileName << endl;
 				return 0; // Возвращаем 0 (ничего не удалось записать)
 			}
 		}
 
 		void Close(File* f) {
 			// Закрыть файл	
+			cout << "Close file " << f->fileName << endl;
+			f->mut->lock();
+			cout << "start Close file " << f->fileName << endl;
 			f->accessType = CLOSED;
+			f->mut->unlock();
+			cout << "Finish Close file " << f->fileName << endl;
 		}
 	};
 
