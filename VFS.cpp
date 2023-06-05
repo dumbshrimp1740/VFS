@@ -15,6 +15,8 @@ int main()
 
     File* resfile = myFS.Create("root\\file1");
     File* resfile2 = myFS.Create("root\\file2");
+    File* resfile3 = myFS.Create("root\\\\\\\\");
+
     string str1 = "it's me austin!";
     char* buf1 = &str1[0];
 
@@ -52,10 +54,14 @@ int main()
     thr2.join();
     thr4.join();
     thr8.join();
-    cout << root->fileName << endl;
+    cout << root->children.size() << endl;
     for (auto it = root->children.begin(); it != root->children.end(); it++) {
         cout << it->second.fileName << endl;
     }
+    if (resfile3 != nullptr)
+        cout << resfile3->fileName;
+    else
+        cout << "oops";
 }
 
 

@@ -60,7 +60,7 @@ namespace TestTask
 		}
 
 		bool FileNameIsValid(string namePart) {
-			if (namePart.length() > 0) { //Имя файла должно содержать хотя бы 1 символ. Нет проверки на символ '\', потому что он отсекается методом GetNextPartOfPath 
+			if (namePart.length() > 0) { //Имя файла должно содержать хотя бы 1 символ. Нет проверки на символ '\', потому что метод GetNextPartOfPath отсекает его
 				return true;
 			}
 			return false;
@@ -68,6 +68,9 @@ namespace TestTask
 
 		File* Open(const char* name) { 
 			// Открыть файл в readonly режиме. Если нет такого файла или же он открыт во writeonly режиме - вернуть nullptr
+			if (name == nullptr) // Если name не существует, возвращаем nullptr
+				return nullptr;
+
 			string path = string(name); // Путь имеет формат "root\файл 1\файл 2\..\файл N\искомый файл"
 			File* currentFile; // Файл, в котором находится алгоритм в данный момент
 			string nextPart = GetNextPartOfPath(path); // Название следующего файла
@@ -133,6 +136,9 @@ namespace TestTask
 
 		File* Create(const char* name){ 
 			// Открыть или создать файл в writeonly режиме. Если нужно, то создать все нужные поддиректории, упомянутые в пути. Вернуть nullptr, если этот файл уже открыт в readonly режиме.
+			if (name == nullptr) // Если name не существует, возвращаем nullptr
+				return nullptr;
+
 			string path = string(name); // Путь имеет формат "root\файл 1\файл 2\..\файл N\искомый файл"
 			File* currentFile; // Файл, в котором находится алгоритм в данный момент
 			string nextPart = GetNextPartOfPath(path); // Название следующего файла
@@ -165,6 +171,8 @@ namespace TestTask
 					it = currentFile->children.find(nextPart); // Пытаемся найти этот файл
 					if (it == currentFile->children.end()) {
 						// Если его не существует, то создаём и заходим в него.
+						if (!FileNameIsValid(nextPart)) // Если имя файла невалидно, возвращаем nullptr, потому что мы не можем создать файл с таким именем
+							return nullptr;
 						currentFile->children.insert(pair<string, File>(nextPart, File(nextPart)));
 						currentFile = &currentFile->children.find(nextPart)->second;
 					}
@@ -192,6 +200,8 @@ namespace TestTask
 					}
 					else {
 						// Если файла не существует, то создаём его и переводим в режим writeonly
+						if (!FileNameIsValid(nextPart)) // Если имя файла невалидно, возвращаем nullptr, потому что мы не можем создать файл с таким именем
+							return nullptr;
 						File resFile = File(nextPart);
 						resFile.accessType = WRITEONLY;
 						currentFile->children.insert(pair<string, File>(nextPart, resFile));
@@ -203,8 +213,8 @@ namespace TestTask
 
 		size_t Read(File* f, char* buff, size_t len) {
 			// Прочитать данные из файла. Возвращаемое значение - сколько реально байт удалось прочитать
-			if (f == nullptr) {
-				return 0; // Если файла не существует, возвращаем 0
+			if (f == nullptr || buff == nullptr) {
+				return 0; // Если файла или буфера не существует, возвращаем 0
 			}
 			f->mut->lock();
 			if (f->accessType == READONLY) { // Если файл открыт для чтения
@@ -240,8 +250,8 @@ namespace TestTask
 
 		size_t Write(File* f, char* buff, size_t len) {
 			// Записать данные в файл. Возвращаемое значение - сколько реально байт удалось записать
-			if (f == nullptr) {
-				return 0; // Если файла не существует, возвращаем 0
+			if (f == nullptr || buff == nullptr) {
+				return 0; // Если файла или буфера не существует, возвращаем 0
 			}
 			f->mut->lock();
 			if (f->accessType == WRITEONLY) { // Если файл открыт для записи
