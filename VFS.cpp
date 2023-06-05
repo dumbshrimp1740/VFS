@@ -10,11 +10,11 @@ using namespace TestTask;
 int main()
 {
     //Ôאיכ הכÿ עוסעמג
-    MyVFS myVFS = MyVFS();
-    File* root = &myVFS.root;
+    MyFS myFS = MyFS();
+    File* root = myFS.Open("root");
 
-    File* resfile = myVFS.Create("file1");
-    File* resfile2 = myVFS.Create("file2");
+    File* resfile = myFS.Create("root\\file1");
+    File* resfile2 = myFS.Create("root\\file2");
     string str1 = "it's me austin!";
     char* buf1 = &str1[0];
 
@@ -30,28 +30,32 @@ int main()
     string str7 = "11111111111111111111111111111";
     char* buf7 = &str7[0];
 
-    thread thr(&MyVFS::Write, myVFS, resfile, buf2, 16);
+    thread thr(&MyFS::Write, myFS, resfile, buf2, 16);
     this_thread::sleep_for(chrono::milliseconds(10));
-    thread thr2(&MyVFS::Write, myVFS, resfile, buf1, 5);
+    thread thr2(&MyFS::Write, myFS, resfile, buf1, 5);
     this_thread::sleep_for(chrono::milliseconds(10));
-    thread thr4(&MyVFS::Write, myVFS, resfile, buf4, 8);
+    thread thr4(&MyFS::Write, myFS, resfile, buf4, 8);
     this_thread::sleep_for(chrono::milliseconds(10));
-    thread thr8(&MyVFS::Write, myVFS, resfile2, buf1, 8);
+    thread thr8(&MyFS::Write, myFS, resfile2, buf1, 8);
     this_thread::sleep_for(chrono::milliseconds(200));
-    myVFS.Close(resfile);
-    myVFS.Open("file1");
-    myVFS.Close(resfile2);
-    myVFS.Open("file2");
+    myFS.Close(resfile);
+    myFS.Open("root\\file1");
+    myFS.Close(resfile2);
+    myFS.Open("root\\file2");
 
-    thread thr3(&MyVFS::Read, myVFS, resfile, buf3, 13);
+    thread thr3(&MyFS::Read, myFS, resfile, buf3, 13);
     thr3.join();
-    thread thr7(&MyVFS::Read, myVFS, resfile2, buf7, 14);
+    thread thr7(&MyFS::Read, myFS, resfile2, buf7, 14);
     thr7.join();
     cout << string(buf3) << " " << string(buf7) << endl;;
     thr.join();
     thr2.join();
     thr4.join();
     thr8.join();
+    cout << root->fileName << endl;
+    for (auto it = root->children.begin(); it != root->children.end(); it++) {
+        cout << it->second.fileName << endl;
+    }
 }
 
 

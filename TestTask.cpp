@@ -32,7 +32,6 @@ namespace TestTask
 			fileName = name;
 			fileContent = content;
 			accessType = CLOSED;
-
 			mut = new mutex();
 		}
 	}; 
@@ -46,7 +45,7 @@ namespace TestTask
 		virtual void Close(File* f) = 0; // Закрыть файл	
 	};
 
-	struct MyVFS : IVFS
+	struct MyFS : IVFS
 	{
 		File root = File("root");
 
@@ -60,18 +59,43 @@ namespace TestTask
 			return path;
 		}
 
+		bool fileNameIsValid(string namePart) {
+			if (namePart.length() > 0) {
+				if (namePart.find('\\') == string::npos) {
+					return true;
+				}
+			}
+			return false;
+		}
+
 		File* Open(const char* name) { 
 			// Открыть файл в readonly режиме. Если нет такого файла или же он открыт во writeonly режиме - вернуть nullptr
-			string path = string(name); // Путь имеет формат "директория 1\директория 2\..\директория N\файл"
-			File* currentFile = &root; // Директория, в которой находится алгоритм в данный момент
+			string path = string(name); // Путь имеет формат "root\директория 1\директория 2\..\директория N\файл"
+			File* currentFile; // Файл, в котором находится алгоритм в данный момент
+			string nextPart = GetNextPartOfPath(path); //Название следующего файла
+			
+			if (!nextPart._Equal("root")) { //Если путь начинается не с root, то путь невалиден
+				return nullptr;
+			}
+			else {
+				currentFile = &root;
+			}
 
-			string nextPart;
+			if (path.length() == nextPart.length() && root.accessType != WRITEONLY) {
+				currentFile->mut->lock();
+				currentFile->accessType = READONLY;
+				currentFile->mut->unlock();
+				return currentFile;
+			}
+			else {
+				path = path.substr((nextPart.length() + 1), (path.length() - nextPart.length() - 1));
+			}
+			
 			map<string, File>::iterator it;
 
 			while (true) {
 				// Вычленяем из пути названия директорий и файла
 				nextPart = GetNextPartOfPath(path);
-
 				if (path.length() != nextPart.length()) { 
 					// Если это имя директории
 					path = path.substr((nextPart.length() + 1), (path.length() - nextPart.length() - 1));
@@ -111,16 +135,28 @@ namespace TestTask
 
 		File* Create(const char* name){ 
 			// Открыть или создать файл в writeonly режиме. Если нужно, то создать все нужные поддиректории, упомянутые в пути. Вернуть nullptr, если этот файл уже открыт в readonly режиме.
-			string path = string(name); // Путь имеет формат "директория 1\директория 2\..\директория N\файл"
-			File* currentFile = &root; // Директория, в которой находится алгоритм в данный момент
+			string path = string(name); // Путь имеет формат "root\директория 1\директория 2\..\директория N\файл"
+			File* currentFile; // Файл, в котором находится алгоритм в данный момент
+			string nextPart = GetNextPartOfPath(path); //Название следующего файла
 
-			string nextPart;
+			if (!nextPart._Equal("root")) { //Если путь начинается не с root, то путь невалиден
+				return nullptr;
+			}
+			else {
+				currentFile = &root;
+			}
+
+			if (path.length() == nextPart.length()) {
+				return currentFile;
+			}
+			else {
+				path = path.substr((nextPart.length() + 1), (path.length() - nextPart.length() - 1));
+			}
+
 			map<string, File>::iterator it;
-
 			while (true) {
 				// Вычленяем из пути названия директорий и файла
 				nextPart = GetNextPartOfPath(path);
-
 				if (path.length() != nextPart.length()) {
 					// Если это имя директории
 					path = path.substr((nextPart.length() + 1), (path.length() - nextPart.length() - 1));
@@ -167,6 +203,9 @@ namespace TestTask
 
 		size_t Read(File* f, char* buff, size_t len) {
 			// Прочитать данные из файла. Возвращаемое значение - сколько реально байт удалось прочитать
+			if (f == nullptr) {
+				return -1; // Если файла не существует, возвращаем 0
+			}
 			f->mut->lock();
 			if (f->accessType == READONLY) { //Если файл открыт для чтения
 				
@@ -201,6 +240,9 @@ namespace TestTask
 
 		size_t Write(File* f, char* buff, size_t len) {
 			// Записать данные в файл. Возвращаемое значение - сколько реально байт удалось записать
+			if (f == nullptr) {
+				return -1; // Если файла не существует, возвращаем 0
+			}
 			f->mut->lock();
 			if (f->accessType == WRITEONLY) { //Если файл открыт для записи
 				// записываем len символов из буфера
@@ -217,6 +259,9 @@ namespace TestTask
 
 		void Close(File* f) {
 			// Закрыть файл	
+			if (f == nullptr) {
+				return; // Если файла не существует, выходим из функции
+			}
 			f->mut->lock();
 			f->accessType = CLOSED;
 			f->mut->unlock();
